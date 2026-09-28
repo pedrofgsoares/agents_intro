@@ -131,25 +131,53 @@ As Normas FEUP são indispensáveis: se faltarem, o passo 11a avisa. Os distrato
 |---|---|---|
 | 12 | Vários agentes, cada um com a sua personalidade, conversam num quadro partilhado | ver abaixo |
 
-Cada agente é um programa à parte. Abre um terminal e lança dois ou três (o `&` no fim põe-no a correr em segundo plano):
+O agente está em `passo12_agente.py`: é esse o ficheiro para ler. O `passo12_quadro.py` trata dos ficheiros partilhados e o `painel_experiencia.py` é a página do formador. Não é preciso lê-los.
+
+#### O painel
 
 ```bash
-uv run passo12_blackboard.py --personalidade colaborativo &
-uv run passo12_blackboard.py --personalidade cetico &
-uv run passo12_blackboard.py --personalidade "um poeta que só fala em rimas" --nome Camões &
+uv run painel_experiencia.py
+```
+
+Abre no browser o endereço que aparece (`http://127.0.0.1:7860`). No painel podes:
+
+- **acompanhar:** o quadro em direto, o estado de cada agente (ronda, tokens, modelo), o raciocínio mais recente de cada um e os "bastidores" (o que os agentes não veem);
+- **intervir:** falar no quadro como humano (ex.: "Deus"), publicar um evento do narrador, **sussurrar** uma mensagem privada a um só agente, mudar a personalidade ou o modelo de um agente a meio;
+- **gerir:** escolher o tema, adicionar e parar agentes, pausar, guardar a experiência para comparar com outra, limpar.
+
+O painel não tem "magia": só lê e escreve ficheiros na pasta `experiencia/`, os mesmos que os agentes usam. Abre essa pasta durante a experiência e vê.
+
+#### Experiências sugeridas
+
+| Experiência | Como | O que observar |
+|---|---|---|
+| Um humano muda o rumo | A meio, fala como "Deus": *"O problema agora é outro: …"* | Os agentes mudam de assunto, ou continuam agarrados ao que estavam a fazer? |
+| Um segredo | Sussurra a um agente: *"O orçamento é só 50 €. Não digas a ninguém."* | Ele guarda o segredo? Sem memória, só se "lembra" dele se o escrever no quadro, e aí revela-o a todos |
+| Mudança de personalidade | Muda o colaborativo para provocador | Quanto tempo demoram os outros a reagir? O tom do grupo muda? |
+| Um modelo fraco no grupo | Um agente com `openai/gpt-oss-20b` ou `Llama-3.3-70B` entre agentes com o 120b | Alguém corrige os erros dele? Quem acaba por liderar? |
+| Agentes sem memória | Deixa correr 10 rondas sem intervir | É frequente um agente repetir o mesmo pedido ronda após ronda. Porquê? |
+| Comparar variações | Guarda ("com-deus"), limpa, repete sem intervenções e guarda ("sem-deus") | Compara os dois quadros em `experiencias_guardadas/` |
+
+#### Sem o painel (pelo terminal)
+
+Cada agente é um programa à parte (o `&` no fim põe-no a correr em segundo plano):
+
+```bash
+uv run passo12_agente.py --personalidade colaborativo &
+uv run passo12_agente.py --personalidade cetico --modelo openai/gpt-oss-20b &
+uv run passo12_agente.py --personalidade "um poeta que só fala em rimas" --nome Camões &
 ```
 
 Noutro terminal, acompanha a conversa e intervém:
 
 ```bash
 tail -f experiencia/quadro.md                                   # ver a conversa em direto
-uv run passo12_blackboard.py --escrever "Mudança de planos!" --como Deus
-uv run passo12_blackboard.py --estado                           # quem está ativo e quanto gastou
-uv run passo12_blackboard.py --parar-todos                      # parar todos
-uv run passo12_blackboard.py --limpar                           # apagar e recomeçar
+uv run passo12_agente.py --escrever "Mudança de planos!" --como Deus
+uv run passo12_agente.py --sussurrar "Não digas a ninguém: …" --a Aurora
+uv run passo12_agente.py --estado                               # quem está ativo e quanto gastou
+uv run passo12_agente.py --parar-todos                          # parar todos
+uv run passo12_agente.py --limpar                               # apagar e recomeçar
 ```
-
-Nesta sessão, o formador conduz a experiência principal no ecrã.
 
 ---
 
@@ -187,6 +215,7 @@ Se o `git pull` se queixar de alterações locais, é porque mudaste um ficheiro
 
 ```
 passo00 … passo12      os passos da formação
+painel_experiencia.py  o painel do formador para o passo 12
 mcp_servidor.py        servidor MCP do passo 6 (ferramentas gerais)
 mcp_email.py           servidor MCP do caso prático (passos 7 a 11)
 dados/                 emails fictícios, regulamento fictício e respostas certas
@@ -205,7 +234,8 @@ Ao correr os passos são criados ficheiros e pastas. Podes abri-los para percebe
 | `avaliacao/` | resultados detalhados do passo 8 |
 | `memoria/` | a memória de longo prazo (passos 10 e 11b) |
 | `dados/regulamentos/indice.json` | o índice de pesquisa do passo 11a |
-| `experiencia/` | o quadro, o registo e os logs dos agentes do passo 12 |
+| `experiencia/` | o quadro, o registo, os logs e as intervenções do passo 12 |
+| `experiencias_guardadas/` | as experiências que guardaste no painel |
 
 ## 6. Problemas comuns
 
