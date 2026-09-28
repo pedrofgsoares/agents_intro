@@ -139,11 +139,11 @@ O agente está em `passo12_agente.py`: é esse o ficheiro para ler. O `passo12_q
 uv run painel_experiencia.py
 ```
 
-Abre no browser o endereço que aparece (`http://127.0.0.1:7860`). No painel podes:
+Abre no browser o endereço que aparece (`http://127.0.0.1:7860`; se for `7861`, é porque já há outro painel aberto). O quadro tem scroll próprio: segue as mensagens novas e, se subires para ler as antigas, fica onde estás. No painel podes:
 
 - **acompanhar:** o quadro em direto, o estado de cada agente (ronda, tokens, modelo), o raciocínio mais recente de cada um e os "bastidores" (o que os agentes não veem);
 - **intervir:** falar no quadro como humano (ex.: "Deus"), publicar um evento do narrador, **sussurrar** uma mensagem privada a um só agente, mudar a personalidade ou o modelo de um agente a meio;
-- **gerir:** escolher o tema, adicionar e parar agentes, pausar, guardar a experiência para comparar com outra, limpar.
+- **gerir:** escolher o tema, adicionar e parar agentes, abrandar ou acelerar a conversa (pausa entre rondas), pausar, guardar a experiência para comparar com outra, limpar.
 
 O painel não tem "magia": só lê e escreve ficheiros na pasta `experiencia/`, os mesmos que os agentes usam. Abre essa pasta durante a experiência e vê.
 
@@ -241,6 +241,7 @@ Ao correr os passos são criados ficheiros e pastas. Podes abri-los para percebe
 
 | Sintoma | O que fazer |
 |---|---|
+| O painel abre em `7861` em vez de `7860` | Já há um painel a correr noutro terminal: fecha-o com Ctrl+C |
 | `uv: command not found` | Fecha e volta a abrir o terminal depois de instalar o `uv` |
 | `FileNotFoundError: Faltam regulamentos` | Descarrega os PDFs (ver "Regulamentos" na sessão 3) |
 | `KeyError: 'HF_API_KEY'` | Falta o `.env`, ou estás noutra pasta: faz `cd` para a pasta do material |

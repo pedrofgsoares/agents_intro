@@ -30,8 +30,10 @@ O QUE VAIS APRENDER
         nesta ronda, uma única vez. Como não tem memória, só "se lembra" de um
         segredo se o escrever no quadro... o que o revela a todos.
 
-    Ritmo: cada ferramenta demora 1 s (para os agentes se intercalarem), no
-    máximo 5 chamadas por ronda, 2 s de pausa entre rondas, 10 rondas por agente.
+    Ritmo: cada ferramenta demora 2 s (para os agentes se intercalarem), no
+    máximo 5 chamadas por ronda, 10 rondas por agente, e uma pausa entre rondas
+    de ~8 s (com uma variação ao acaso, para os agentes não falarem todos ao
+    mesmo tempo). O formador pode mudar a pausa a meio, no painel ou com --ritmo.
 
     Os ficheiros partilhados (quadro, registo, logs, sussurros, pausa) são
     tratados em passo12_quadro.py. Não precisas de o ler para perceber o agente.
@@ -45,6 +47,7 @@ COMO CORRER
     uv run passo12_agente.py --personalidade "um poeta que só fala em rimas" --nome Camões &
     uv run passo12_agente.py --escrever "Precisamos de ajuda!" --como Deus   # um humano escreve
     uv run passo12_agente.py --sussurrar "O orçamento é metade" --a Bento    # só o Bento recebe
+    uv run passo12_agente.py --ritmo 15        # 15 s de pausa entre rondas (todos os agentes)
     uv run passo12_agente.py --estado          # quem está ativo e quanto gastou
     uv run passo12_agente.py --parar-todos     # pára todos os agentes
     uv run passo12_agente.py --limpar          # apaga a experiência (quadro incluído)
@@ -73,11 +76,13 @@ PYTHON NOVO NESTE PASSO
       os outros. Por isso é preciso um "cadeado" nos ficheiros (em passo12_quadro.py).
     - signal: apanhar o Ctrl+C para o agente terminar de forma arrumada.
     - time.sleep(s): esperar s segundos.
+    - random.uniform(a, b): um número ao acaso entre a e b.
 """
 
 import argparse
 import json
 import os
+import random
 import signal
 import sys
 import time
@@ -106,8 +111,8 @@ MODELOS_SUGERIDOS = [
 
 MAX_RONDAS = 10
 MAX_CHAMADAS_POR_RONDA = 5
-ESPERA_POR_FERRAMENTA = 1.0   # segundos
-PAUSA_ENTRE_RONDAS = 2.0      # segundos
+ESPERA_POR_FERRAMENTA = 2.0   # segundos
+PAUSA_ENTRE_RONDAS = 8.0      # segundos, por omissão (o formador pode mudá-la: ficheiro RITMO)
 
 PERSONALIDADES = {
     "colaborativo": "Colaborativo e prestável: procura consensos e propõe próximos passos.",
@@ -255,6 +260,10 @@ def comandos_do_formador(args) -> bool:
         quadro.enviar_sussurro(args.a, args.como, args.sussurrar)
         quadro.registar_intervencao("sussurro", args.a, args.sussurrar, autor=args.como)
         print(f"Sussurro enviado a {args.a} (recebe-o no início da próxima ronda).")
+    elif args.ritmo is not None:
+        quadro.definir_ritmo(args.ritmo)
+        quadro.registar_intervencao("ritmo", None, f"{args.ritmo:g} s entre rondas")
+        print(f"Pausa entre rondas: {args.ritmo:g} s (vale a partir da próxima pausa de cada agente).")
     elif args.estado:
         for nome, a in quadro.ler_registo().items():
             print(f"{nome:<10} {a.get('estado', '?'):<32} rondas {a.get('rondas', 0):>3}  "
@@ -279,6 +288,7 @@ def main():
     parser.add_argument("--sussurrar", metavar="TEXTO", help="envia uma mensagem privada a um agente (com --a)")
     parser.add_argument("--a", metavar="NOME", help="o agente que recebe o sussurro")
     parser.add_argument("--como", default="humano", help="autor da mensagem de --escrever / --sussurrar")
+    parser.add_argument("--ritmo", type=float, metavar="SEGUNDOS", help="muda a pausa entre rondas de todos os agentes")
     parser.add_argument("--estado", action="store_true", help="mostra os agentes registados e sai")
     parser.add_argument("--parar-todos", action="store_true", help="pede a todos os agentes que parem")
     parser.add_argument("--limpar", action="store_true", help="apaga a experiência (quadro, registo, logs)")
@@ -349,7 +359,13 @@ def main():
             motivo = "decidiu sair"
             quadro.escrever_no_quadro("sistema", f"{nome} saiu da experiência.")
             break
-        time.sleep(PAUSA_ENTRE_RONDAS)
+
+        # Pausa entre rondas: o valor do formador, com ±25% ao acaso. Esperamos
+        # segundo a segundo para reagir logo a um Ctrl+C ou a um pedido de paragem.
+        espera = quadro.ler_ritmo(PAUSA_ENTRE_RONDAS) * random.uniform(0.75, 1.25)
+        fim_da_espera = time.monotonic() + espera
+        while time.monotonic() < fim_da_espera and not interrompido and not quadro.FICHEIRO_PARAR.exists():
+            time.sleep(max(0.0, min(1.0, fim_da_espera - time.monotonic())))
 
     quadro.atualizar_registo(nome, estado=f"terminou: {motivo}", fim=quadro.agora())
     quadro.registar_log(nome, {"fim": motivo, "tokens_total": tokens})

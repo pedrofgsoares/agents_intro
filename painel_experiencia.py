@@ -10,7 +10,7 @@ passo12_quadro.py). Podes abrir essa pasta durante a experiência e ver.
                 mais recente de cada um e as intervenções privadas.
     Intervir:   falar como humano (ex.: "Deus"), publicar um evento do narrador,
                 sussurrar a um só agente, mudar a personalidade ou o modelo de um agente.
-    Gerir:      tema inicial, lançar e parar agentes, pausar, parar todos,
+    Gerir:      tema inicial, lançar e parar agentes, ritmo da conversa, pausar, parar todos,
                 guardar a experiência para comparar variações, limpar.
 
 Uso:
@@ -26,7 +26,7 @@ import sys
 import gradio as gr
 
 import passo12_quadro as quadro
-from passo12_agente import MAX_RONDAS, MODELO_POR_OMISSAO, MODELOS_SUGERIDOS, PERSONALIDADES
+from passo12_agente import MAX_RONDAS, MODELO_POR_OMISSAO, MODELOS_SUGERIDOS, PAUSA_ENTRE_RONDAS, PERSONALIDADES
 
 # Os agentes lançados por este painel. Guardamo-los para o sistema operativo
 # "arrumar" os que terminam (poll), senão ficariam como processos-fantasma.
@@ -36,7 +36,7 @@ PROCESSOS: list[subprocess.Popen] = []
 LANCADOS: set[str] = set()
 
 CORES = ["#2563eb", "#16a34a", "#c026d3", "#ea580c", "#0891b2", "#9333ea", "#dc2626", "#65a30d"]
-MENSAGENS_VISIVEIS = 40
+MENSAGENS_VISIVEIS = 500  # o quadro tem scroll próprio; o limite só evita páginas enormes
 LINHA = re.compile(r"^\[(\d\d:\d\d:\d\d)\] ([^:]+): (.*)$")
 
 
@@ -133,11 +133,14 @@ def md_estado() -> str:
     return f"{situacao} · {len(vivos)} agente(s) ativo(s)"
 
 
-def atualizar(mostrar_raciocinio: bool, nomes_antes: list[str]):
+def atualizar(mostrar_raciocinio: bool, nomes_antes: list[str], html_antes: str):
     nomes = list(quadro.ler_registo())
     lista = gr.update(choices=nomes) if nomes != nomes_antes else gr.update()
-    return (html_quadro(), tabela_agentes(), md_raciocinio(mostrar_raciocinio), md_privado(),
-            md_estado(), lista, nomes)
+    # O quadro só é redesenhado quando muda: assim não se perde a posição do scroll
+    html = html_quadro()
+    vista = gr.update(value=html) if html != html_antes else gr.update()
+    return (vista, tabela_agentes(), md_raciocinio(mostrar_raciocinio), md_privado(),
+            md_estado(), lista, nomes, html)
 
 
 # ---------------------------------------------------------------------------
@@ -233,6 +236,11 @@ def parar_agente(agente: str):
     gr.Info(f"{agente} termina no fim da ronda.")
 
 
+def mudar_ritmo(segundos: float):
+    quadro.definir_ritmo(segundos)
+    quadro.registar_intervencao("ritmo", None, f"{segundos:g} s entre rondas")
+
+
 def pausar():
     quadro.pausar()
     quadro.registar_intervencao("pausa")
@@ -272,6 +280,9 @@ def limpar(confirmado: bool):
 # ---------------------------------------------------------------------------
 CSS = """
 body, .gradio-container { font-size: 18px !important; }
+/* O quadro: uma caixa de altura fixa, com scroll próprio (o !important vence o CSS do Gradio) */
+#quadro { height: 58vh !important; overflow-y: auto !important; border: 1px solid rgba(127,127,127,.35);
+          border-radius: 8px; padding: 8px 10px; }
 .quadro { display: flex; flex-direction: column; gap: 6px; font-size: 19px; line-height: 1.4; }
 .quadro.vazio { opacity: .6; padding: 24px; }
 .msg { padding: 6px 10px; border-radius: 6px; border-left: 5px solid transparent; }
@@ -282,11 +293,31 @@ body, .gradio-container { font-size: 18px !important; }
 .msg.sistema { opacity: .6; font-size: 15px; }
 """
 
+# O quadro segue as mensagens novas (fica no fundo), a não ser que o formador
+# tenha subido para ler mensagens antigas: aí não mexemos no scroll.
+JS = """
+() => {
+  const ligar = () => {
+    const caixa = document.querySelector('#quadro');
+    if (!caixa) return setTimeout(ligar, 300);
+    let noFundo = true;
+    caixa.addEventListener('scroll', () => {
+      noFundo = caixa.scrollHeight - caixa.scrollTop - caixa.clientHeight < 60;
+    });
+    new MutationObserver(() => { if (noFundo) caixa.scrollTop = caixa.scrollHeight; })
+      .observe(caixa, { childList: true, subtree: true, characterData: true });
+    caixa.scrollTop = caixa.scrollHeight;
+  };
+  ligar();
+}
+"""
+
 
 def construir() -> gr.Blocks:
     personalidades = list(PERSONALIDADES)
     with gr.Blocks(title="Experiência multi-agente", fill_width=True) as painel:
         nomes = gr.State([])
+        html_mostrado = gr.State("")
         ativos = agentes_vivos()
         gr.Markdown("## 🤖 Experiência multi-agente — quadro partilhado")
         if ativos:
@@ -296,7 +327,7 @@ def construir() -> gr.Blocks:
         with gr.Row():
             # ---------------- Coluna esquerda: a conversa e as intervenções públicas
             with gr.Column(scale=3):
-                vista_quadro = gr.HTML(html_quadro(), js_on_load=None)
+                vista_quadro = gr.HTML(html_quadro(), js_on_load=None, elem_id="quadro")
                 with gr.Tabs():
                     with gr.Tab("🗣️ Falar no quadro"):
                         with gr.Row():
@@ -335,6 +366,9 @@ def construir() -> gr.Blocks:
                     gr.Button("⏸ Pausar").click(pausar)
                     gr.Button("▶️ Retomar").click(retomar)
                     gr.Button("⏹ Parar todos", variant="stop").click(parar_todos)
+                ritmo = gr.Slider(0, 60, value=quadro.ler_ritmo(PAUSA_ENTRE_RONDAS), step=1,
+                                  label="Pausa entre rondas (segundos) — mais alto = conversa mais lenta")
+                ritmo.release(mudar_ritmo, ritmo)
 
                 with gr.Accordion("➕ Adicionar agente", open=True):
                     tema = gr.Textbox(quadro.TEMA_INICIAL, label="Tema (usado quando entra o primeiro agente)")
@@ -365,11 +399,11 @@ def construir() -> gr.Blocks:
                         gr.Button("🗑 Limpar", variant="stop").click(limpar, confirmar, confirmar)
 
         # Atualização automática, ~1 vez por segundo (sem indicador de "a carregar")
-        gr.Timer(1.0).tick(atualizar, [mostrar, nomes],
-                           [vista_quadro, tabela, raciocinio, privado, estado, agente, nomes],
+        gr.Timer(1.0).tick(atualizar, [mostrar, nomes, html_mostrado],
+                           [vista_quadro, tabela, raciocinio, privado, estado, agente, nomes, html_mostrado],
                            show_progress="hidden")
     return painel
 
 
 if __name__ == "__main__":
-    construir().launch(css=CSS)
+    construir().launch(css=CSS, js=JS)

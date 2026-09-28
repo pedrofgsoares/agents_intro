@@ -14,6 +14,7 @@ Tudo passa por ficheiros na pasta experiencia/:
     intervencoes.jsonl    tudo o que o formador fez (escrever, sussurrar, mudar, pausar...)
     PAUSA                 se existir, os agentes esperam sem gastar tokens
     PARAR                 se existir, todos os agentes terminam
+    RITMO                 os segundos de pausa entre rondas (o painel pode mudá-los a meio)
 
 Como vários programas (um por agente, mais o painel) mexem nos mesmos ficheiros
 ao mesmo tempo, cada escrita é feita "trancada" (trancado()): enquanto um
@@ -39,6 +40,7 @@ PASTA_SUSSURROS = PASTA / "sussurros"
 INTERVENCOES = PASTA / "intervencoes.jsonl"
 FICHEIRO_PARAR = PASTA / "PARAR"
 FICHEIRO_PAUSA = PASTA / "PAUSA"
+FICHEIRO_RITMO = PASTA / "RITMO"
 PASTA_GUARDADAS = PASTA_PROJETO / "experiencias_guardadas"
 
 TEMA_INICIAL = "Apresentem-se e combinem entre vocês um pequeno problema para resolverem juntos."
@@ -214,6 +216,19 @@ def retomar() -> None:
 
 def em_pausa() -> bool:
     return FICHEIRO_PAUSA.exists()
+
+
+def ler_ritmo(por_omissao: float) -> float:
+    """Os segundos de pausa entre rondas definidos pelo formador (ou o valor por omissão)."""
+    try:
+        return max(0.0, float(FICHEIRO_RITMO.read_text()))
+    except (OSError, ValueError):
+        return por_omissao
+
+
+def definir_ritmo(segundos: float) -> None:
+    PASTA.mkdir(exist_ok=True)
+    FICHEIRO_RITMO.write_text(str(float(segundos)))
 
 
 def pedir_paragem(nome: str) -> None:
