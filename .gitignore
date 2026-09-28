@@ -1,0 +1,31 @@
+# --- Segredos: NUNCA vão para o repositório ---
+.env
+
+# --- Ambiente Python (criado pelo uv sync) ---
+.venv/
+__pycache__/
+
+# --- Ficheiros gerados ao correr os passos ---
+*.log
+notas/
+saida/
+memoria/
+avaliacao/
+experiencia/
+dados/regulamentos/indice.json
+
+# --- Regulamentos em PDF: cada formando descarrega-os (ver README) ---
+dados/regulamentos/*.pdf
+
+# --- As tuas experiências: copia um passo para meu_*.py e muda à vontade ---
+meu_*.py
+
+# --- Material do formador (não é distribuído) ---
+laboratorio/
+openspec/
+.codex/
+.github/
+.claude/
+
+# --- Lixo do Windows/WSL ---
+*:Zone.Identifier
