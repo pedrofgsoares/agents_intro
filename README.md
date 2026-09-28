@@ -26,12 +26,12 @@ Fecha e volta a abrir o terminal, para o `uv` ficar disponível.
 **1.2 — Descarregar o material**
 
 ```bash
-git clone <ENDEREÇO-DO-REPOSITÓRIO> agentes
+git clone https://github.com/pedrofgsoares/agents_intro.git agentes
 cd agentes
 uv sync
 ```
 
-(O formador indica o endereço.) O `uv sync` descarrega tudo o que é preciso e demora um ou dois minutos da primeira vez.
+O `uv sync` descarrega tudo o que é preciso e demora um ou dois minutos da primeira vez.
 
 **1.3 — Criar a tua chave da Hugging Face**
 
